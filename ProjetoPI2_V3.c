@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include<string.h>
 #include <stdint.h>
+ FILE *mem = NULL;
+    char **mem_instr = NULL;
 
 //struct para busca
 typedef struct instrucao {
