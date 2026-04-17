@@ -573,58 +573,52 @@ void imprimir_mem_dados(int mem[]){
 }
 
 
-void gerar_asm(instrucao p,int pc,char bin[])
-{
+void gerar_asm(instrucao p,int pc,char bin[]){
     FILE *arquivo;
     arquivo = fopen("assembly.asm","a");
-
-    if (!arquivo)
-    {
+    if (!arquivo){
         printf("\nProblema ao gerar arquivo!");
         return;
     }
-
-    switch (p.opcode)
-    {
+    switch (p.opcode){
     case 0:
-        switch (p.funct)
-        {
+        switch (p.funct){
         case 0:
-            fprintf(arquivo,"instrucao:%d |Binario:%s |Assembly: add $%d,$%d,$%d\n",pc,bin,p.rd,p.rs,p.rt);
+            fprintf(arquivo,"add $%d,$%d,$%d\n",p.rd,p.rs,p.rt);
             break;
 
         case 2:
-            fprintf(arquivo,"instrucao:%d |Binario:%s |Assembly: sub $%d,$%d,$%d\n",pc,bin,p.rd,p.rs,p.rt);
+            fprintf(arquivo,"sub $%d,$%d,$%d\n",p.rd,p.rs,p.rt);
             break;
         }
         break;
 
     case 2:
-        fprintf(arquivo,"Instrução:%d |Binario:%s |Assembly: jump %d\n",pc,bin,p.addr);
+        fprintf(arquivo,"jump %d\n",p.addr);
         break;
 
     case 4:
         p.imm=sign_extend6to8(p.imm);
-        fprintf(arquivo,"Instruçao:%d |Binario:%s |Assembly: addi $%d,$%d,%d\n",pc,bin,p.rt,p.rs,p.imm);
+        fprintf(arquivo,"addi $%d,$%d,%d\n",p.rt,p.rs,p.imm);
         break;
 
     case 8:
         p.imm=sign_extend6to8(p.imm);
-        fprintf(arquivo,"Instrucao:%d |Binario:%s |Assembly: beq $%d,$%d,%d\n",pc,bin,p.rs,p.rt,p.imm);
+        fprintf(arquivo,"$%d,$%d,%d\n",p.rs,p.rt,p.imm);
         break;
 
     case 11:
         p.imm=sign_extend6to8(p.imm);
-        fprintf(arquivo,"Instrucao:%d |Binario:%s |Assembly: lw $%d,%d($%d)\n",pc,bin,p.rt,p.imm,p.rs);
+        fprintf(arquivo,"lw $%d,%d($%d)\n",p.rt,p.imm,p.rs);
         break;
 
     case 15:
         p.imm=sign_extend6to8(p.imm);
-        fprintf(arquivo,"Instrucao:%d |Binario:%s |Assembly: sw $%d,%d($%d)\n",pc,bin,p.rt,p.imm,p.rs);
+        fprintf(arquivo,"sw $%d,%d($%d)\n",p.rt,p.imm,p.rs);
         break;
 
     default:
-        fprintf(arquivo,"Instrucao:%d |Binario:%s | instrucao desconhecida\n",pc,bin);
+        fprintf(arquivo,"instrucao desconhecida\n");
         break;
     }
 

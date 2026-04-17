@@ -3,4 +3,6 @@ compila:
 		./teste
 clear:
 		rm teste
+		rm arquivo_dados.txt
+		rm assembly.asm
 
