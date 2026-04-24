@@ -2,10 +2,12 @@
 #include <stdlib.h>
 #include<string.h>
 #include <stdint.h>
- FILE *mem = NULL;
-    char **mem_instr = NULL;
 
-//struct para busca
+FILE *mem = NULL;
+char **mem_instr = NULL;
+int m = 256;
+int n = 16;
+
 typedef struct instrucao {
     int opcode;
     int rs;
@@ -16,7 +18,6 @@ typedef struct instrucao {
     int  addr;
 } instrucao;
 
-//struct para decodificação
 typedef struct unidade_controle {
     int RegDst;
     int ALUSrc;
@@ -56,7 +57,7 @@ int mux_branch(int sinal_branch,int entrada1,int entrada2);
 int mux_jump(int sinal_jump,int entrada1,int entrada2);
 int somador(int entrada1,int entrada2);
 instrucao busca (char *bin, char **mem_instr, int pc);
-controle sinais_controle(instrucao i, metricas *m);
+controle sinais_controle(instrucao i, metricas *m, char *ultimaInst);
 void executar(instrucao i, controle c, int *pc);
 int ula(int op1, int op2, controle c, int *overflow,int *zero);//adicionei o zero na função da ula que vai ser utilizado para o beq
 int lwsw(int operacao, int endereco, int dado);
@@ -64,13 +65,16 @@ int sign_extend6to8(int imm);
 void imprimir_mem_dados(int mem[]);
 void gerar_asm(instrucao p,int pc,char bin[]);
 void gerar_dat(int mem[]);
-void mostrar_metricas(metricas);
+void mostrar_metricas(metricas m);
 void carregadat (int *mem_dados);
+void reduzir_metricas(metricas *m, char ultimaInst);
+
 
 
 int main() {
     FILE *mem = NULL;
     char **mem_instr = NULL;
+    char ultimainst = 0;
     int m = 256;
     int n = 16;
     int escolha=1,pc=0;
@@ -139,7 +143,7 @@ int main() {
          break;
          case 8:
           do{i = busca(bin, mem_instr, pc);
-           c = sinais_controle(i, &metricas);
+           c = sinais_controle(i, &metricas, &ultimainst);
           int old = pc;
           executar(i, c, &pc);
         if(pc == old){
@@ -147,15 +151,15 @@ int main() {
         }
         }while(pc<=255);
         printf("Programa Executado!\n");
-         break;
-         case 9:
-            for(int j=0;j<256;j++){
+        break;
+        case 9:
+           for(int j=0;j<256;j++){
             oldmem[j] = memoria[j];}
             for(int k=0;k<8;k++){
             oldreg[k] = registradores[k];}
             oldpc = pc;
            i = busca(bin, mem_instr, pc);
-           c = sinais_controle(i, &metricas);
+           c = sinais_controle(i, &metricas, &ultimainst);
           executar(i, c, &pc);
           printf("Instrução executada!\n");
           printf("PC da proxima instrucao:%d\n",pc);
@@ -167,6 +171,7 @@ int main() {
             for(int k=0;k<8;k++){
             registradores[k] = oldreg[k];}
             i = busca(bin, mem_instr, pc);
+            reduzir_metricas(&metricas, ultimainst);
            printf("\nPC da proxima instrucao:%d",pc);
            break;
          default:
@@ -344,7 +349,7 @@ void imprimir_instrucao(instrucao p) {
 }
 
 //Função que recebe a instrução convertida e decodifica os sinais de controle
-controle sinais_controle(instrucao i, metricas *m){
+controle sinais_controle(instrucao i, metricas *m, char *ultimaInst){
     controle c;
     // Inicializa tudo com 0
     c.RegDst = 0;
@@ -366,6 +371,7 @@ controle sinais_controle(instrucao i, metricas *m){
             c.RegWrite = 1;
             c.ALUOp = i.funct; // usa funct direto
             m->contInstReg ++;
+            *ultimaInst = 'R';
             break;
         case 4:
             // ADDI
@@ -374,6 +380,7 @@ controle sinais_controle(instrucao i, metricas *m){
             c.RegWrite = 1;
             c.ALUOp = 0;
             m->contInstImm ++;
+            *ultimaInst = 'I';
             break;
         case 11:
             // LW
@@ -382,23 +389,27 @@ controle sinais_controle(instrucao i, metricas *m){
             c.RegWrite = 1;
             c.MemRead = 1;
             m->contInstImm ++;
+            *ultimaInst = 'I';
             break;
         case 15:
             // SW
             c.ALUSrc = 1;
             c.MemWrite = 1;
             m->contInstImm ++;
+            *ultimaInst = 'I';
             break;
         case 8:
             // BEQ
             c.Branch = 1;
             c.ALUOp = 2;
             m->contInstImm ++;
+            *ultimaInst = 'I';
             break;
         case 2:
             // JUMP
             c.jump = 1;
             m->contInstJump ++;
+            *ultimaInst = 'J';
             break;
 
     } return c;
@@ -573,52 +584,58 @@ void imprimir_mem_dados(int mem[]){
 }
 
 
-void gerar_asm(instrucao p,int pc,char bin[]){
+void gerar_asm(instrucao p,int pc,char bin[])
+{
     FILE *arquivo;
-    arquivo = fopen("assembly.asm","a");
-    if (!arquivo){
+    arquivo = fopen("assembly.txt","a");
+
+    if (!arquivo)
+    {
         printf("\nProblema ao gerar arquivo!");
         return;
     }
-    switch (p.opcode){
+
+    switch (p.opcode)
+    {
     case 0:
-        switch (p.funct){
+        switch (p.funct)
+        {
         case 0:
-            fprintf(arquivo,"add $%d,$%d,$%d\n",p.rd,p.rs,p.rt);
+            fprintf(arquivo,"instrucao:%d |Binario:%s |Assembly: add $%d,$%d,$%d\n",pc,bin,p.rd,p.rs,p.rt);
             break;
 
         case 2:
-            fprintf(arquivo,"sub $%d,$%d,$%d\n",p.rd,p.rs,p.rt);
+            fprintf(arquivo,"instrucao:%d |Binario:%s |Assembly: sub $%d,$%d,$%d\n",pc,bin,p.rd,p.rs,p.rt);
             break;
         }
         break;
 
     case 2:
-        fprintf(arquivo,"jump %d\n",p.addr);
+        fprintf(arquivo,"Instrução:%d |Binario:%s |Assembly: jump %d\n",pc,bin,p.addr);
         break;
 
     case 4:
         p.imm=sign_extend6to8(p.imm);
-        fprintf(arquivo,"addi $%d,$%d,%d\n",p.rt,p.rs,p.imm);
+        fprintf(arquivo,"Instruçao:%d |Binario:%s |Assembly: addi $%d,$%d,%d\n",pc,bin,p.rt,p.rs,p.imm);
         break;
 
     case 8:
         p.imm=sign_extend6to8(p.imm);
-        fprintf(arquivo,"$%d,$%d,%d\n",p.rs,p.rt,p.imm);
+        fprintf(arquivo,"Instrucao:%d |Binario:%s |Assembly: beq $%d,$%d,%d\n",pc,bin,p.rs,p.rt,p.imm);
         break;
 
     case 11:
         p.imm=sign_extend6to8(p.imm);
-        fprintf(arquivo,"lw $%d,%d($%d)\n",p.rt,p.imm,p.rs);
+        fprintf(arquivo,"Instrucao:%d |Binario:%s |Assembly: lw $%d,%d($%d)\n",pc,bin,p.rt,p.imm,p.rs);
         break;
 
     case 15:
         p.imm=sign_extend6to8(p.imm);
-        fprintf(arquivo,"sw $%d,%d($%d)\n",p.rt,p.imm,p.rs);
+        fprintf(arquivo,"Instrucao:%d |Binario:%s |Assembly: sw $%d,%d($%d)\n",pc,bin,p.rt,p.imm,p.rs);
         break;
 
     default:
-        fprintf(arquivo,"instrucao desconhecida\n");
+        fprintf(arquivo,"Instrucao:%d |Binario:%s | instrucao desconhecida\n",pc,bin);
         break;
     }
 
@@ -641,5 +658,25 @@ void mostrar_metricas(metricas m) {
     "\nInstruções tipo I executadas: %i"
     "\nInstruções tipo J executadas: %i",
     m.contInst, m.contInstReg, m.contInstImm, m.contInstJump);
+    return;
+}
+
+
+void reduzir_metricas(metricas *m, char ultimaInst) {
+    m->contInst --;
+    switch (ultimaInst)
+    {
+    case 'R':
+        m->contInstReg --;
+        break;
+    case 'I':
+        m->contInstImm --;
+        break;
+    case 'J':
+        m->contInstJump --;
+        break;
+    default:
+        break;
+    }
     return;
 }
