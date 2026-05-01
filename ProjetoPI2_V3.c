@@ -68,9 +68,8 @@ void gerar_dat(int mem[]);
 void mostrar_metricas(metricas m);
 void carregadat (int *mem_dados);
 void reduzir_metricas(metricas *m, char ultimaInst);
-
-
-
+void conversao(char bin[], int numero);
+void complemento2(char bin[]);
 int main() {
     FILE *mem = NULL;
     char **mem_instr = NULL;
@@ -679,4 +678,73 @@ void reduzir_metricas(metricas *m, char ultimaInst) {
         break;
     }
     return;
+}
+void conversao(char bin[], int numero)
+{
+    int atual = numero;
+    int indice = 7;
+    int resto=0;
+
+    // se for negativo eu trabalho como se fosse positivo para depois eu aplica o complemento de dois
+    if (numero < 0)
+        atual = -numero;
+
+    // converte normalmente
+    while (atual > 0 && indice >= 0)
+    {
+        resto=atual % 2;
+        if (resto==0)
+        {
+            bin[indice]='0';
+        }
+        else
+        {
+            bin[indice]='1';
+        }
+        atual /= 2;
+        indice--;
+    }
+
+    while (indice >= 0)
+    {
+        bin[indice] = '0';
+        indice--;
+    }
+
+    // se o numero for negativo eu aplico o complemento de dois
+    if (numero < 0)
+    {
+        complemento2(bin);
+    }
+
+    bin[8] = '\0';
+}
+
+void complemento2(char bin[])
+{
+    //aqui eu inverto os bits
+    for (int i = 0; i < 8; i++)
+    {
+        if (bin[i] == '0')
+            bin[i] = '1';
+        else
+            bin[i] = '0';
+    }
+
+    //aqui eu somo +1
+    int carry = 1;
+
+    for (int i = 7; i >= 0; i--)
+    {
+        if (bin[i] == '1' && carry == 1)
+        {
+            bin[i] = '0';
+            carry = 1;
+        }
+        else if (bin[i] == '0' && carry == 1)
+        {
+            bin[i] = '1';
+            carry = 0;
+        }
+    }
 }
